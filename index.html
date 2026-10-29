@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#111111">
 <meta name="description" content="Planning de rendez-vous et suivi des paiements Jm’Ink Tattoo">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Jm’Ink Tattoo — Agenda</title>
 <style>
 :root{--bg:#0b0b0c;--panel:#171719;--panel2:#202023;--gold:#d6b56d;--gold2:#f0d99c;--text:#f6f3eb;--muted:#aaa7a0;--line:#383633;--green:#42bd86;--yellow:#edc56b;--red:#f07878}
@@ -21,7 +21,7 @@ h1{font-size:21px;margin:5px 0 13px}h2{font-size:17px;margin:0 0 12px;color:var(
 button,.btn{border:1px solid #7e6536;border-radius:11px;padding:11px 13px;background:#24211b;color:var(--gold2);font-weight:650;font-size:14px;cursor:pointer}
 button.primary{background:linear-gradient(135deg,#f0d28c,#c99a42);color:#15120b;border:0}.full{width:100%}.small{padding:7px 9px;font-size:12px}.danger{border-color:#793d3d;color:#ffaaaa;background:#261818}
 nav{position:fixed;bottom:0;left:0;right:0;background:#111113;border-top:1px solid #4b3b20;display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:10}
-nav button{background:transparent;border:0;color:#aaa;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;padding:6px 10px}nav button.active{color:var(--gold);background:#282116}
+nav button{background:transparent;border:0;color:#aaa;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;padding:6px 7px}nav button.active{color:var(--gold);background:#282116}
 input,select,textarea{width:100%;padding:11px 10px;background:#101012;color:var(--text);border:1px solid #45413a;border-radius:9px;font:inherit;min-width:0}
 label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.span2{grid-column:1/-1}
 .appt{border-left:3px solid var(--gold);padding:10px 11px;background:#141416;border-radius:0 10px 10px 0;margin:9px 0}.appt h3{font-size:15px;margin:0 0 4px}.meta{color:var(--muted);font-size:12px;line-height:1.6}.pill{font-size:11px;border:1px solid var(--line);padding:4px 7px;border-radius:20px;white-space:nowrap}.pill.Confirmé{color:var(--green);border-color:#27664b}.pill.Terminé{color:#a8c9ef;border-color:#355a7c}.pill.A\ confirmer{color:var(--yellow)}.pill.Annulé{color:var(--red);border-color:#773838}
@@ -71,6 +71,21 @@ label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}.formgri
   <div class="card" style="margin-top:12px"><h2>Sauvegarde</h2><p class="hint">Les rendez-vous sont conservés sur ce navigateur. Exporte régulièrement une copie de tes données, surtout avant de changer de téléphone ou de navigateur.</p><div class="actions"><button class="primary" onclick="exportData()">Exporter mes données</button><button onclick="document.getElementById('importFile').click()">Importer une sauvegarde</button><input class="hidden" type="file" id="importFile" accept=".json,application/json" onchange="importData(event)"></div><p class="hint">Garde ce fichier dans un endroit sûr : il contient les coordonnées de tes clients.</p></div>
 </section>
 
+<section id="reminders" class="hidden">
+  <div class="section-title"><h1>Mes rappels</h1></div>
+  <div class="card">
+    <h2>Rappel pour moi 🔔</h2>
+    <p class="hint">Autorise les notifications pour recevoir un rappel la veille des rendez-vous. Pour que la notification se déclenche, l’application doit être ouverte sur ton téléphone à ce moment-là. Cette version ne peut pas garantir un rappel si l’application est complètement fermée.</p>
+    <button class="primary full" id="enableNotifications" onclick="enableReminders()">Activer les notifications</button>
+    <p class="hint" id="notificationStatus"></p>
+  </div>
+  <div class="card">
+    <h2>Rappeler mes clients 💬</h2>
+    <p class="hint">Les rendez-vous de demain apparaissent ici. Appuie sur « Préparer le rappel » pour ouvrir tes SMS avec un message prêt à envoyer, si un numéro de téléphone est renseigné dans Contact. Le message ne part pas sans ta validation.</p>
+  </div>
+  <div id="reminderList"></div>
+</section>
+
 <section id="editor" class="hidden">
   <div class="section-title"><h1 id="editorTitle">Nouveau rendez-vous</h1><button onclick="showTab('planning')">← Retour</button></div>
   <form class="card" id="apptForm" onsubmit="saveAppointment(event)">
@@ -97,6 +112,7 @@ label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}.formgri
   <button id="nav-home" class="active" onclick="showTab('home')"><span>⌂</span>Accueil</button>
   <button id="nav-planning" onclick="showTab('planning')"><span>▦</span>Planning</button>
   <button id="nav-clients" onclick="showTab('clients')"><span>♙</span>Clients</button>
+  <button id="nav-reminders" onclick="showTab('reminders')"><span>🔔</span>Rappels</button>
   <button id="nav-stats" onclick="showTab('stats')"><span>▥</span>Stats</button>
 </nav>
 <script>
@@ -108,13 +124,55 @@ const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.get
 const money=n=>(Number(n)||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:2});
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function persist(){localStorage.setItem(KEY,JSON.stringify(appointments));renderAll()}
-function showTab(tab){['home','planning','clients','stats','editor'].forEach(id=>$(id).classList.toggle('hidden',id!==tab));['home','planning','clients','stats'].forEach(id=>$('nav-'+id).classList.toggle('active',id===tab));if(tab==='planning')renderPlanning();if(tab==='clients')renderClients();if(tab==='stats')renderStats();if(tab==='home')renderHome();window.scrollTo(0,0)}
+function showTab(tab){['home','planning','clients','stats','reminders','editor'].forEach(id=>$(id).classList.toggle('hidden',id!==tab));['home','planning','clients','stats','reminders'].forEach(id=>$('nav-'+id).classList.toggle('active',id===tab));if(tab==='planning')renderPlanning();if(tab==='clients')renderClients();if(tab==='stats')renderStats();if(tab==='home')renderHome();if(tab==='reminders')renderReminders();window.scrollTo(0,0)}
 function dateFr(s){if(!s)return 'Date à définir';const [y,m,d]=s.split('-');return `${d}/${m}/${y}`}
 function apptCard(a){let bal=Math.max(0,(+a.price||0)-(+a.deposit||0));return `<div class="appt"><div class="row between"><h3>${escapeHtml(a.time||'--:--')} · ${escapeHtml(a.client)}</h3><span class="pill ${escapeHtml(a.status)}">${escapeHtml(a.status)}</span></div><div class="meta">${dateFr(a.date)} · ${escapeHtml(a.duration||'Durée non précisée')}<br>${escapeHtml(a.project||'Projet non précisé')}<br>Prix ${money(a.price)} · Acompte ${money(a.deposit)} · Reste ${money(bal)}</div><div class="actions"><button class="small" onclick="editAppointment('${a.id}')">Modifier</button>${a.contact?`<button class="small" onclick="copyText('${encodeURIComponent(a.contact)}')">Copier contact</button>`:''}</div></div>`}
 function renderHome(){let active=appointments.filter(a=>a.status!=='Annulé');$('todayLabel').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});$('todayCount').textContent=appointments.filter(a=>a.date===todayISO()&&a.status!=='Annulé').length;$('revenue').textContent=money(active.reduce((s,a)=>s+(+a.price||0),0));$('deposits').textContent=money(active.reduce((s,a)=>s+(+a.deposit||0),0));$('remaining').textContent=money(active.reduce((s,a)=>s+Math.max(0,(+a.price||0)-(+a.deposit||0)),0));let next=appointments.filter(a=>a.status!=='Annulé'&&a.date>=todayISO()).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).slice(0,5);$('upcoming').innerHTML=next.length?next.map(apptCard).join(''):'<div class="empty">Aucun rendez-vous à venir.<br>Ajoute ton premier créneau.</div>'}
 function renderPlanning(){let q=($('search')?.value||'').toLowerCase(),st=$('statusFilter')?.value||'',from=$('fromDate')?.value||'';let arr=appointments.filter(a=>(!q||[a.client,a.contact,a.project].join(' ').toLowerCase().includes(q))&&(!st||a.status===st)&&(!from||a.date>=from)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));$('appointments').innerHTML=arr.length?arr.map(a=>`<div>${apptCard(a)}</div>`).join(''):'<div class="card empty">Aucun rendez-vous trouvé.</div>'}
 function renderClients(){let q=($('clientSearch')?.value||'').toLowerCase(),map=new Map();appointments.forEach(a=>{let k=(a.client||'').trim().toLowerCase();if(k&&!map.has(k))map.set(k,a)});let arr=[...map.values()].filter(a=>!q||[a.client,a.contact].join(' ').toLowerCase().includes(q)).sort((a,b)=>a.client.localeCompare(b.client));$('clientList').innerHTML=arr.length?arr.map(a=>`<div class="card"><div class="row between"><h2>${escapeHtml(a.client)}</h2><button class="small" onclick="editAppointment('${a.id}')">Voir RDV</button></div><div class="meta">${escapeHtml(a.contact||'Aucun contact renseigné')}<br>Dernier rendez-vous enregistré : ${dateFr(a.date)}</div></div>`).join(''):'<div class="card empty">Les clients apparaîtront ici quand tu ajouteras des rendez-vous.</div>'}
 function renderStats(){let active=appointments.filter(a=>a.status!=='Annulé');$('statCount').textContent=appointments.length;$('statDone').textContent=appointments.filter(a=>a.status==='Terminé').length;$('statRevenue').textContent=money(active.reduce((s,a)=>s+(+a.price||0),0));$('statCollected').textContent=money(active.reduce((s,a)=>s+(+a.deposit||0),0))}
+
+const reminderKey='jmink_reminders_notified_v1';
+function tomorrowISO(){const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function notificationSupported(){return 'Notification' in window}
+async function enableReminders(){
+  if(!notificationSupported()){alert('Les notifications ne sont pas prises en charge dans ce navigateur.');return}
+  try{
+    const permission=await Notification.requestPermission();
+    $('notificationStatus').textContent=permission==='granted'?'Notifications autorisées. Garde l’application ouverte la veille pour recevoir les rappels.':"Notifications non autorisées. Tu peux les autoriser dans les réglages du navigateur.";
+    checkDueReminders();
+  }catch(e){$('notificationStatus').textContent='Impossible d’activer les notifications dans ce navigateur.'}
+}
+function renderReminders(){
+  const tomorrow=tomorrowISO();
+  const list=appointments.filter(a=>a.date===tomorrow&&a.status!=='Annulé').sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  $('reminderList').innerHTML=list.length?list.map(a=>`<div class="appt"><div class="row between"><h3>${escapeHtml(a.time||'--:--')} · ${escapeHtml(a.client)}</h3><span class="pill">${escapeHtml(a.status)}</span></div><div class="meta">${dateFr(a.date)}<br>${escapeHtml(a.project||'Projet non précisé')}<br>Contact : ${escapeHtml(a.contact||'non renseigné')}</div><div class="actions"><button class="primary small" onclick="prepareClientReminder('${a.id}')">Préparer le rappel</button><button class="small" onclick="editAppointment('${a.id}')">Modifier</button></div></div>`).join(''):'<div class="card empty">Aucun rendez-vous prévu demain.<br>Les rendez-vous de demain apparaîtront ici pour te permettre de rappeler tes clients la veille.</div>';
+  if(notificationSupported()) $('notificationStatus').textContent=Notification.permission==='granted'?'Notifications autorisées.':'Notifications non activées.';
+}
+function prepareClientReminder(id){
+  const a=appointments.find(x=>x.id===id);if(!a)return;
+  const msg=`Salut ${a.client}, petit rappel pour ton rendez-vous tattoo chez Jm’Ink demain à ${a.time||'l’heure prévue'}. Pense à bien manger avant de venir et à arriver à l’heure. À demain !`;
+  const phone=(a.contact||'').replace(/[^\d+]/g,'').replace(/^00/,'+');
+  const digits=phone.replace(/\D/g,'');
+  if(digits.length>=8){
+    let smsPhone=phone;
+    if(digits.startsWith('0')&&digits.length===10)smsPhone='+33'+digits.slice(1);
+    window.location.href='sms:'+smsPhone+'?body='+encodeURIComponent(msg);
+  }else{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(msg).then(()=>alert('Message copié ! Aucun numéro de téléphone valide n’est renseigné. Colle le message dans tes SMS.')).catch(()=>prompt('Copie ce message pour ton client :',msg));
+    }else prompt('Copie ce message pour ton client :',msg);
+  }
+}
+function checkDueReminders(){
+  if(!notificationSupported()||Notification.permission!=='granted')return;
+  const tomorrow=tomorrowISO(),seen=JSON.parse(localStorage.getItem(reminderKey)||'{}');
+  appointments.filter(a=>a.date===tomorrow&&a.status!=='Annulé'&&!seen[a.id]).forEach(a=>{
+    try{new Notification('Rappel Jm’Ink — demain',{body:`${a.time||''} · ${a.client}${a.project?' — '+a.project:''}`});seen[a.id]=todayISO()}catch(e){}
+  });
+  localStorage.setItem(reminderKey,JSON.stringify(seen));
+}
+
 function renderAll(){renderHome();renderPlanning();renderClients();renderStats()}
 function newAppointment(){ $('apptForm').reset();$('editId').value='';$('date').value=todayISO();$('time').value='';$('status').value='À confirmer';$('editorTitle').textContent='Nouveau rendez-vous';$('deleteBtn').style.display='none';updateBalance();showTab('editor')}
 function editAppointment(id){let a=appointments.find(x=>x.id===id);if(!a)return;Object.keys({date:1,time:1,client:1,contact:1,project:1,duration:1,price:1,deposit:1,status:1,notes:1}).forEach(k=>$(k).value=a[k]??'');$('editId').value=id;$('editorTitle').textContent='Modifier le rendez-vous';$('deleteBtn').style.display='block';updateBalance();showTab('editor')}
@@ -127,6 +185,8 @@ function exportData(){let blob=new Blob([JSON.stringify({app:'JmInk',version:1,e
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let data=JSON.parse(r.result),arr=Array.isArray(data)?data:data.appointments;if(!Array.isArray(arr))throw new Error();if(confirm('Importer '+arr.length+' rendez-vous ? Les données actuelles seront remplacées.')){appointments=arr;persist();alert('Sauvegarde importée.')}}catch(err){alert('Fichier de sauvegarde invalide.')}e.target.value=''};r.readAsText(f)}
 $('todayLabel').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
 renderAll();
+checkDueReminders();
+setInterval(checkDueReminders, 15*60*1000);
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./service-worker.js').catch(err => console.log('Service worker non disponible', err));
