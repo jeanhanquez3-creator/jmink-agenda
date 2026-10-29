@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="description" content="Planning de rendez-vous et suivi des paiements Jm’Ink Tattoo">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Jm’Ink Tattoo — Agenda</title>
+<style>
+:root{--bg:#0b0b0c;--panel:#171719;--panel2:#202023;--gold:#d6b56d;--gold2:#f0d99c;--text:#f6f3eb;--muted:#aaa7a0;--line:#383633;--green:#42bd86;--yellow:#edc56b;--red:#f07878}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:86px}
+header{background:linear-gradient(135deg,#171717,#090909);border-bottom:1px solid #6c562e;padding:18px 16px 14px;position:sticky;top:0;z-index:5}
+.brand{font-family:Georgia,serif;color:var(--gold);font-size:30px;font-style:italic;text-align:center;letter-spacing:.5px}.sub{text-align:center;font-size:10px;letter-spacing:4px;color:#ddd;margin-top:1px}
+main{max-width:760px;margin:auto;padding:14px}
+h1{font-size:21px;margin:5px 0 13px}h2{font-size:17px;margin:0 0 12px;color:var(--gold)}
+.row{display:flex;gap:10px;align-items:center}.between{justify-content:space-between}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:14px;margin-bottom:12px}
+.metric{background:linear-gradient(145deg,#1d1c19,#121212);border:1px solid #5a492b;border-radius:13px;padding:13px;min-height:82px}.metric .num{font-size:23px;color:var(--gold2);font-weight:750}.metric .label{font-size:12px;color:var(--muted);margin-top:3px}
+button,.btn{border:1px solid #7e6536;border-radius:11px;padding:11px 13px;background:#24211b;color:var(--gold2);font-weight:650;font-size:14px;cursor:pointer}
+button.primary{background:linear-gradient(135deg,#f0d28c,#c99a42);color:#15120b;border:0}.full{width:100%}.small{padding:7px 9px;font-size:12px}.danger{border-color:#793d3d;color:#ffaaaa;background:#261818}
+nav{position:fixed;bottom:0;left:0;right:0;background:#111113;border-top:1px solid #4b3b20;display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:10}
+nav button{background:transparent;border:0;color:#aaa;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;padding:6px 10px}nav button.active{color:var(--gold);background:#282116}
+input,select,textarea{width:100%;padding:11px 10px;background:#101012;color:var(--text);border:1px solid #45413a;border-radius:9px;font:inherit;min-width:0}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.span2{grid-column:1/-1}
+.appt{border-left:3px solid var(--gold);padding:10px 11px;background:#141416;border-radius:0 10px 10px 0;margin:9px 0}.appt h3{font-size:15px;margin:0 0 4px}.meta{color:var(--muted);font-size:12px;line-height:1.6}.pill{font-size:11px;border:1px solid var(--line);padding:4px 7px;border-radius:20px;white-space:nowrap}.pill.Confirmé{color:var(--green);border-color:#27664b}.pill.Terminé{color:#a8c9ef;border-color:#355a7c}.pill.A\ confirmer{color:var(--yellow)}.pill.Annulé{color:var(--red);border-color:#773838}
+.empty{text-align:center;color:var(--muted);padding:25px 10px}.hidden{display:none!important}.hint{font-size:12px;color:var(--muted);line-height:1.5}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.section-title h2{margin:0}
+@media(max-width:420px){.formgrid{grid-template-columns:1fr}.span2{grid-column:auto}.metric .num{font-size:20px}.brand{font-size:27px}}
+</style>
+</head>
+<body>
+<header><div class="brand">Jm’Ink</div><div class="sub">TATTOO • AGENDA</div></header>
+<main>
+<section id="home">
+  <div class="section-title"><h1>Bonjour 👋</h1><span class="pill" id="todayLabel"></span></div>
+  <div class="grid">
+    <div class="metric"><div class="num" id="todayCount">0</div><div class="label">Rendez-vous aujourd’hui</div></div>
+    <div class="metric"><div class="num" id="revenue">0 €</div><div class="label">Prix prévu (hors annulés)</div></div>
+    <div class="metric"><div class="num" id="deposits">0 €</div><div class="label">Acomptes reçus</div></div>
+    <div class="metric"><div class="num" id="remaining">0 €</div><div class="label">Reste à encaisser</div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="section-title"><h2>Prochains rendez-vous</h2><button class="small" onclick="showTab('planning')">Tout voir →</button></div><div id="upcoming"></div></div>
+  <button class="primary full" onclick="newAppointment()">＋ Ajouter un rendez-vous</button>
+</section>
+
+<section id="planning" class="hidden">
+  <div class="section-title"><h1>Mon planning</h1><button class="primary" onclick="newAppointment()">＋ Ajouter</button></div>
+  <div class="card">
+    <label>Rechercher un client ou un projet</label><input id="search" placeholder="Nom, prénom, tatouage…" oninput="renderPlanning()">
+    <label>Filtrer par statut</label><select id="statusFilter" onchange="renderPlanning()"><option value="">Tous les statuts</option><option>À confirmer</option><option>Confirmé</option><option>Terminé</option><option>Annulé</option></select>
+    <label>Afficher à partir du</label><input type="date" id="fromDate" onchange="renderPlanning()">
+  </div>
+  <div id="appointments"></div>
+</section>
+
+<section id="clients" class="hidden">
+  <div class="section-title"><h1>Mes clients</h1></div>
+  <div class="card"><label>Rechercher</label><input id="clientSearch" placeholder="Nom ou contact…" oninput="renderClients()"></div>
+  <div id="clientList"></div>
+</section>
+
+<section id="stats" class="hidden">
+  <h1>Statistiques</h1>
+  <div class="grid">
+    <div class="metric"><div class="num" id="statCount">0</div><div class="label">Rendez-vous enregistrés</div></div>
+    <div class="metric"><div class="num" id="statDone">0</div><div class="label">Terminés</div></div>
+    <div class="metric"><div class="num" id="statRevenue">0 €</div><div class="label">Prix prévus hors annulations</div></div>
+    <div class="metric"><div class="num" id="statCollected">0 €</div><div class="label">Acomptes saisis</div></div>
+  </div>
+  <div class="card" style="margin-top:12px"><h2>Sauvegarde</h2><p class="hint">Les rendez-vous sont conservés sur ce navigateur. Exporte régulièrement une copie de tes données, surtout avant de changer de téléphone ou de navigateur.</p><div class="actions"><button class="primary" onclick="exportData()">Exporter mes données</button><button onclick="document.getElementById('importFile').click()">Importer une sauvegarde</button><input class="hidden" type="file" id="importFile" accept=".json,application/json" onchange="importData(event)"></div><p class="hint">Garde ce fichier dans un endroit sûr : il contient les coordonnées de tes clients.</p></div>
+</section>
+
+<section id="editor" class="hidden">
+  <div class="section-title"><h1 id="editorTitle">Nouveau rendez-vous</h1><button onclick="showTab('planning')">← Retour</button></div>
+  <form class="card" id="apptForm" onsubmit="saveAppointment(event)">
+    <input type="hidden" id="editId">
+    <div class="formgrid">
+      <div><label>Date *</label><input id="date" type="date" required></div>
+      <div><label>Heure *</label><input id="time" type="time" required></div>
+      <div><label>Nom du client *</label><input id="client" required placeholder="Prénom et nom"></div>
+      <div><label>Contact</label><input id="contact" placeholder="Snap / téléphone"></div>
+      <div class="span2"><label>Projet / emplacement</label><input id="project" placeholder="Ex. prénom, avant-bras"></div>
+      <div><label>Durée prévue</label><input id="duration" placeholder="Ex. 2 h"></div>
+      <div><label>Prix prévu (€)</label><input id="price" type="number" min="0" step="0.01" placeholder="0"></div>
+      <div><label>Acompte reçu (€)</label><input id="deposit" type="number" min="0" step="0.01" placeholder="0"></div>
+      <div><label>Statut</label><select id="status"><option>À confirmer</option><option>Confirmé</option><option>Terminé</option><option>Annulé</option></select></div>
+      <div class="span2"><label>Notes privées</label><textarea id="notes" rows="3" placeholder="Détails utiles du rendez-vous…"></textarea></div>
+    </div>
+    <p class="hint" id="balancePreview">Reste à payer : 0 €</p>
+    <button class="primary full" type="submit">Enregistrer le rendez-vous</button>
+    <button class="full danger" id="deleteBtn" type="button" onclick="deleteCurrent()" style="margin-top:9px;display:none">Supprimer ce rendez-vous</button>
+  </form>
+</section>
+</main>
+<nav>
+  <button id="nav-home" class="active" onclick="showTab('home')"><span>⌂</span>Accueil</button>
+  <button id="nav-planning" onclick="showTab('planning')"><span>▦</span>Planning</button>
+  <button id="nav-clients" onclick="showTab('clients')"><span>♙</span>Clients</button>
+  <button id="nav-stats" onclick="showTab('stats')"><span>▥</span>Stats</button>
+</nav>
+<script>
+const KEY='jmink_appointments_v1';
+let appointments=[];
+try{appointments=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){appointments=[]}
+const $=id=>document.getElementById(id);
+const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const money=n=>(Number(n)||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:2});
+const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function persist(){localStorage.setItem(KEY,JSON.stringify(appointments));renderAll()}
+function showTab(tab){['home','planning','clients','stats','editor'].forEach(id=>$(id).classList.toggle('hidden',id!==tab));['home','planning','clients','stats'].forEach(id=>$('nav-'+id).classList.toggle('active',id===tab));if(tab==='planning')renderPlanning();if(tab==='clients')renderClients();if(tab==='stats')renderStats();if(tab==='home')renderHome();window.scrollTo(0,0)}
+function dateFr(s){if(!s)return 'Date à définir';const [y,m,d]=s.split('-');return `${d}/${m}/${y}`}
+function apptCard(a){let bal=Math.max(0,(+a.price||0)-(+a.deposit||0));return `<div class="appt"><div class="row between"><h3>${escapeHtml(a.time||'--:--')} · ${escapeHtml(a.client)}</h3><span class="pill ${escapeHtml(a.status)}">${escapeHtml(a.status)}</span></div><div class="meta">${dateFr(a.date)} · ${escapeHtml(a.duration||'Durée non précisée')}<br>${escapeHtml(a.project||'Projet non précisé')}<br>Prix ${money(a.price)} · Acompte ${money(a.deposit)} · Reste ${money(bal)}</div><div class="actions"><button class="small" onclick="editAppointment('${a.id}')">Modifier</button>${a.contact?`<button class="small" onclick="copyText('${encodeURIComponent(a.contact)}')">Copier contact</button>`:''}</div></div>`}
+function renderHome(){let active=appointments.filter(a=>a.status!=='Annulé');$('todayLabel').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});$('todayCount').textContent=appointments.filter(a=>a.date===todayISO()&&a.status!=='Annulé').length;$('revenue').textContent=money(active.reduce((s,a)=>s+(+a.price||0),0));$('deposits').textContent=money(active.reduce((s,a)=>s+(+a.deposit||0),0));$('remaining').textContent=money(active.reduce((s,a)=>s+Math.max(0,(+a.price||0)-(+a.deposit||0)),0));let next=appointments.filter(a=>a.status!=='Annulé'&&a.date>=todayISO()).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).slice(0,5);$('upcoming').innerHTML=next.length?next.map(apptCard).join(''):'<div class="empty">Aucun rendez-vous à venir.<br>Ajoute ton premier créneau.</div>'}
+function renderPlanning(){let q=($('search')?.value||'').toLowerCase(),st=$('statusFilter')?.value||'',from=$('fromDate')?.value||'';let arr=appointments.filter(a=>(!q||[a.client,a.contact,a.project].join(' ').toLowerCase().includes(q))&&(!st||a.status===st)&&(!from||a.date>=from)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));$('appointments').innerHTML=arr.length?arr.map(a=>`<div>${apptCard(a)}</div>`).join(''):'<div class="card empty">Aucun rendez-vous trouvé.</div>'}
+function renderClients(){let q=($('clientSearch')?.value||'').toLowerCase(),map=new Map();appointments.forEach(a=>{let k=(a.client||'').trim().toLowerCase();if(k&&!map.has(k))map.set(k,a)});let arr=[...map.values()].filter(a=>!q||[a.client,a.contact].join(' ').toLowerCase().includes(q)).sort((a,b)=>a.client.localeCompare(b.client));$('clientList').innerHTML=arr.length?arr.map(a=>`<div class="card"><div class="row between"><h2>${escapeHtml(a.client)}</h2><button class="small" onclick="editAppointment('${a.id}')">Voir RDV</button></div><div class="meta">${escapeHtml(a.contact||'Aucun contact renseigné')}<br>Dernier rendez-vous enregistré : ${dateFr(a.date)}</div></div>`).join(''):'<div class="card empty">Les clients apparaîtront ici quand tu ajouteras des rendez-vous.</div>'}
+function renderStats(){let active=appointments.filter(a=>a.status!=='Annulé');$('statCount').textContent=appointments.length;$('statDone').textContent=appointments.filter(a=>a.status==='Terminé').length;$('statRevenue').textContent=money(active.reduce((s,a)=>s+(+a.price||0),0));$('statCollected').textContent=money(active.reduce((s,a)=>s+(+a.deposit||0),0))}
+function renderAll(){renderHome();renderPlanning();renderClients();renderStats()}
+function newAppointment(){ $('apptForm').reset();$('editId').value='';$('date').value=todayISO();$('time').value='';$('status').value='À confirmer';$('editorTitle').textContent='Nouveau rendez-vous';$('deleteBtn').style.display='none';updateBalance();showTab('editor')}
+function editAppointment(id){let a=appointments.find(x=>x.id===id);if(!a)return;Object.keys({date:1,time:1,client:1,contact:1,project:1,duration:1,price:1,deposit:1,status:1,notes:1}).forEach(k=>$(k).value=a[k]??'');$('editId').value=id;$('editorTitle').textContent='Modifier le rendez-vous';$('deleteBtn').style.display='block';updateBalance();showTab('editor')}
+function saveAppointment(e){e.preventDefault();let id=$('editId').value||String(Date.now())+Math.random().toString(16).slice(2,6);let a={id,date:$('date').value,time:$('time').value,client:$('client').value.trim(),contact:$('contact').value.trim(),project:$('project').value.trim(),duration:$('duration').value.trim(),price:+$('price').value||0,deposit:+$('deposit').value||0,status:$('status').value,notes:$('notes').value.trim()};if(a.deposit>a.price&&a.price>0&&!confirm('L’acompte dépasse le prix prévu. Enregistrer quand même ?'))return;let i=appointments.findIndex(x=>x.id===id);if(i>=0)appointments[i]=a;else appointments.push(a);persist();showTab('planning')}
+function deleteCurrent(){let id=$('editId').value;if(id&&confirm('Supprimer définitivement ce rendez-vous ?')){appointments=appointments.filter(a=>a.id!==id);persist();showTab('planning')}}
+function updateBalance(){let p=+$('price').value||0,d=+$('deposit').value||0;$('balancePreview').textContent='Reste à payer : '+money(Math.max(0,p-d));}
+$('price').addEventListener('input',updateBalance);$('deposit').addEventListener('input',updateBalance);
+function copyText(encoded){navigator.clipboard?.writeText(decodeURIComponent(encoded)).then(()=>alert('Contact copié.')).catch(()=>alert(decodeURIComponent(encoded)))}
+function exportData(){let blob=new Blob([JSON.stringify({app:'JmInk',version:1,exportedAt:new Date().toISOString(),appointments},null,2)],{type:'application/json'});let url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='sauvegarde-jmink.json';a.click();URL.revokeObjectURL(url)}
+function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let data=JSON.parse(r.result),arr=Array.isArray(data)?data:data.appointments;if(!Array.isArray(arr))throw new Error();if(confirm('Importer '+arr.length+' rendez-vous ? Les données actuelles seront remplacées.')){appointments=arr;persist();alert('Sauvegarde importée.')}}catch(err){alert('Fichier de sauvegarde invalide.')}e.target.value=''};r.readAsText(f)}
+$('todayLabel').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+renderAll();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(err => console.log('Service worker non disponible', err));
+  });
+}
+</script>
+</body></html>
